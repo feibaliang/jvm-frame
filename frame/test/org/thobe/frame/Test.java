@@ -82,12 +82,8 @@ public class Test {
 //        });
 //        throw new RuntimeException("aaaa");
         System.out.println(1111);
-        System.out.println("dfdfdfdfdfdfdfd========"+Frame.getAllThreads());
-        for (Thread thread : Frame.getAllThreads()) {
-            System.out.println(111);
-            System.out.println(thread.getName());
-        }
-        ;
+        //System.out.println("dfdfdfdfdfdfdfd========"+Frame.getAllThreads());
+        //Frame.getAllThreads();
 //        Test test = new Test();
 //        System.out.println("\nTEST ONE");
 //        printFrame(test.testOne(1, 2, "Hello"));

@@ -292,11 +292,11 @@ public final class Frame {
     public static native Thread[] getAllThreads();
 
     private static final String NATIVE_LIBRARY_NAME = "frameintrospect";
-    private static final boolean active;
+    private static  boolean active;
 
     static {
 
         System.loadLibrary(NATIVE_LIBRARY_NAME);
-        active = setupNative();
+//        active = setupNative();
     }
 }
