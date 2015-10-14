@@ -56,6 +56,116 @@ jvmtiEnv *getJvmToolingInterface(JavaVM *jvm) {
     return jvmti;
 }
 
+jobject getLocalValue(JNIEnv *env, jthread thread, jint depth,
+                      jvmtiLocalVariableEntry *table, int index) {
+    jobject result;
+    jint iVal;
+    jfloat fVal;
+    jdouble dVal;
+    jlong jVal;
+    jvmtiError tiErr;
+    jclass reflectClass;
+    jmethodID valueOf;
+    printf("depth %d %s\n",depth,table[index].signature);
+    // Retreive
+    switch (table[index].signature[0]) {
+        case '[': // Array
+        case 'L': // Object
+            
+            tiErr = (*(globalData->jvmti))->GetLocalObject(globalData->jvmti, thread,
+                                                           depth, table[index].slot,
+                                                           &result);
+            break;
+        case 'J': // long
+            tiErr = (*(globalData->jvmti))->GetLocalLong(globalData->jvmti, thread,
+                                                         depth, table[index].slot,
+                                                         &jVal);
+            break;
+        case 'F': // float
+            tiErr = (*(globalData->jvmti))->GetLocalFloat(globalData->jvmti, thread,
+                                                          depth, table[index].slot,
+                                                          &fVal);
+            break;
+        case 'D': // double
+            tiErr = (*(globalData->jvmti))->GetLocalDouble(globalData->jvmti, thread,
+                                                           depth, table[index].slot,
+                                                           &dVal);
+            break;
+            // Integer types
+        case 'I': // int
+        case 'S': // short
+        case 'C': // char
+        case 'B': // byte
+        case 'Z': // boolean
+            tiErr = (*(globalData->jvmti))->GetLocalInt(globalData->jvmti, thread,
+                                                        depth, table[index].slot,
+                                                        &iVal);
+            break;
+            // error type
+        default:
+            return NULL;
+    }
+    if (tiErr != JVMTI_ERROR_NONE) {
+        return NULL;
+    }
+    // Box primitives
+    switch (table[index].signature[0]) {
+        case 'J': // long
+            reflectClass = (*env)->FindClass(env, "java/lang/Long");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(J)Ljava/lang/Long;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, jVal);
+            break;
+        case 'F': // float
+            reflectClass = (*env)->FindClass(env, "java/lang/Float");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(F)Ljava/lang/Float;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, fVal);
+            break;
+        case 'D': // double
+            reflectClass = (*env)->FindClass(env, "java/lang/Double");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(D)Ljava/lang/Double;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, dVal);
+            break;
+            // INTEGER TYPES
+        case 'I': // int
+            reflectClass = (*env)->FindClass(env, "java/lang/Integer");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(I)Ljava/lang/Integer;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
+            break;
+        case 'S': // short
+            reflectClass = (*env)->FindClass(env, "java/lang/Short");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(S)Ljava/lang/Short;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
+            break;
+        case 'C': // char
+            reflectClass = (*env)->FindClass(env, "java/lang/Character");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(C)Ljava/lang/Character;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
+            break;
+        case 'B': // byte
+            reflectClass = (*env)->FindClass(env, "java/lang/Byte");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(B)Ljava/lang/Byte;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
+            break;
+        case 'Z': // boolean
+            reflectClass = (*env)->FindClass(env, "java/lang/Boolean");
+            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
+                                                "(Z)Ljava/lang/Boolean;");
+            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
+            break;
+        default:  // jobject
+            break;
+    }
+    return result;
+}
+
+
 jboolean InitializeAgent(JavaVM *jvm) {
     static GlobalAgentData data;
     if (!globalData) {
@@ -79,29 +189,29 @@ jboolean InitializeAgent(JavaVM *jvm) {
     }
 }
 
-/*
- * Agent load method.
- */
-JNIEXPORT jint JNICALL
-Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
-    jvmtiCapabilities capa;
-    jvmtiError tiErr;
-
-    if (InitializeAgent(jvm)) {
-        (void) memset(&capa, 0, sizeof(capa));
-        tiErr = (*(globalData->jvmti))->AddCapabilities(globalData->jvmti, &capa);
-        if (tiErr != JVMTI_ERROR_NONE) {
-            if (tiErr == JVMTI_ERROR_NOT_AVAILABLE) {
-                printf("ERROR: The can_access_local_variables capability is not available.");
-            } else {
-                printf("ERROR: JVMTI error code: 0x%x\n", tiErr);
-            }
-        }
-    } else {
-        printf("ERROR: Could not load JVM Tooling Interface.\n");
-    }
-    return 0;
-}
+///*
+// * Agent load method.
+// */
+//JNIEXPORT jint JNICALL
+//Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
+//    jvmtiCapabilities capa;
+//    jvmtiError tiErr;
+//
+//    if (InitializeAgent(jvm)) {
+//        (void) memset(&capa, 0, sizeof(capa));
+//        tiErr = (*(globalData->jvmti))->AddCapabilities(globalData->jvmti, &capa);
+//        if (tiErr != JVMTI_ERROR_NONE) {
+//            if (tiErr == JVMTI_ERROR_NOT_AVAILABLE) {
+//                printf("ERROR: The can_access_local_variables capability is not available.");
+//            } else {
+//                printf("ERROR: JVMTI error code: 0x%x\n", tiErr);
+//            }
+//        }
+//    } else {
+//        printf("ERROR: Could not load JVM Tooling Interface.\n");
+//    }
+//    return 0;
+//}
 
 
 void setCapabilities(jvmtiEnv *env) {
@@ -261,114 +371,6 @@ Java_org_thobe_frame_Frame_setupNative(JNIEnv *env, jclass cls) {
     }
 }
 
-jobject getLocalValue(JNIEnv *env, jthread thread, jint depth,
-                      jvmtiLocalVariableEntry *table, int index) {
-    jobject result;
-    jint iVal;
-    jfloat fVal;
-    jdouble dVal;
-    jlong jVal;
-    jvmtiError tiErr;
-    jclass reflectClass;
-    jmethodID valueOf;
-
-    // Retreive
-    switch (table[index].signature[0]) {
-        case '[': // Array
-        case 'L': // Object
-
-            tiErr = (*(globalData->jvmti))->GetLocalObject(globalData->jvmti, thread,
-                                                           depth, table[index].slot,
-                                                           &result);
-            break;
-        case 'J': // long
-            tiErr = (*(globalData->jvmti))->GetLocalLong(globalData->jvmti, thread,
-                                                         depth, table[index].slot,
-                                                         &jVal);
-            break;
-        case 'F': // float
-            tiErr = (*(globalData->jvmti))->GetLocalFloat(globalData->jvmti, thread,
-                                                          depth, table[index].slot,
-                                                          &fVal);
-            break;
-        case 'D': // double
-            tiErr = (*(globalData->jvmti))->GetLocalDouble(globalData->jvmti, thread,
-                                                           depth, table[index].slot,
-                                                           &dVal);
-            break;
-            // Integer types
-        case 'I': // int
-        case 'S': // short
-        case 'C': // char
-        case 'B': // byte
-        case 'Z': // boolean
-            tiErr = (*(globalData->jvmti))->GetLocalInt(globalData->jvmti, thread,
-                                                        depth, table[index].slot,
-                                                        &iVal);
-            break;
-            // error type
-        default:
-            return NULL;
-    }
-    if (tiErr != JVMTI_ERROR_NONE) {
-        return NULL;
-    }
-    // Box primitives
-    switch (table[index].signature[0]) {
-        case 'J': // long
-            reflectClass = (*env)->FindClass(env, "java/lang/Long");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(J)Ljava/lang/Long;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, jVal);
-            break;
-        case 'F': // float
-            reflectClass = (*env)->FindClass(env, "java/lang/Float");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(F)Ljava/lang/Float;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, fVal);
-            break;
-        case 'D': // double
-            reflectClass = (*env)->FindClass(env, "java/lang/Double");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(D)Ljava/lang/Double;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, dVal);
-            break;
-            // INTEGER TYPES
-        case 'I': // int
-            reflectClass = (*env)->FindClass(env, "java/lang/Integer");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(I)Ljava/lang/Integer;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
-            break;
-        case 'S': // short
-            reflectClass = (*env)->FindClass(env, "java/lang/Short");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(S)Ljava/lang/Short;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
-            break;
-        case 'C': // char
-            reflectClass = (*env)->FindClass(env, "java/lang/Character");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(C)Ljava/lang/Character;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
-            break;
-        case 'B': // byte
-            reflectClass = (*env)->FindClass(env, "java/lang/Byte");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(B)Ljava/lang/Byte;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
-            break;
-        case 'Z': // boolean
-            reflectClass = (*env)->FindClass(env, "java/lang/Boolean");
-            valueOf = (*env)->GetStaticMethodID(env, reflectClass, "valueOf",
-                                                "(Z)Ljava/lang/Boolean;");
-            result = (*env)->CallStaticObjectMethod(env, reflectClass, valueOf, iVal);
-            break;
-        default:  // jobject
-            break;
-    }
-    return result;
-}
 
 void makeLocalVariable(JNIEnv *env, jthread thread, jint depth,
                        jclass localClass, jmethodID live, jmethodID dead,
@@ -496,6 +498,7 @@ jobject buildFrame(JNIEnv *env, jthread thread, jint depth, jboolean get_locals,
                                        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
         locals = (*env)->NewObjectArray(env, num_entries, localClass, NULL);
         for (i = 0; i < num_entries; i++) {
+            printf("2 %s",table[i].signature);
             makeLocalVariable(env, thread, depth, localClass, liveCtor, deadCtor,
                               location, locals, table, i);
         }

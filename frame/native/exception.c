@@ -238,7 +238,7 @@ void show_statck_trace(jvmtiEnv const *jvmti, const struct _jobject *thr,jint *c
                 printf("get local variabel table\n");
                 jvmtiLocalVariableEntry *localVariableEntry;
                 jint local_var_entry_count;
-                printf("方法名%d\n",frames[i].method);
+                printf("方法名%s\n",methodName);
                 err = (*jvmti)->GetLocalVariableTable(jvmti,frames[i].method,&local_var_entry_count,&localVariableEntry);
 
                 if(err != JVMTI_ERROR_NONE) {
@@ -254,40 +254,42 @@ void show_statck_trace(jvmtiEnv const *jvmti, const struct _jobject *thr,jint *c
                 jint iVal;
                 printf("get local value2%d\n",local_var_entry_count);
                 for (int j = 0; j < local_var_entry_count; ++j) {
-                    printf("%s\n",localVariableEntry[i].generic_signature);
-//                    switch (localVariableEntry[j].signature[0]) {
-//
-//                        case '[': // Array
-//                        case 'L': // Object
+                    printf("%d,%s\n",j,localVariableEntry[j].signature);
+
+                    switch (localVariableEntry[j].signature[0]) {
+
+                        case '[': // Array
+                        case 'L': // Object
 //                            err = (*jvmti)->GetLocalObject(jvmti, &thr,
 //                                                           i, localVariableEntry[j].slot,
 //                                                           &result);
-//                            break;
-//                        case 'J': // long
-//                            err = (*jvmti)->GetLocalLong(jvmti, &thr, i, localVariableEntry[j].slot, &jVal);
-//                            printf("%s=%d\n", localVariableEntry[j].name, jVal);
-//                            break;
-//                        case 'F': // float
-//                            err = (*jvmti)->GetLocalFloat(jvmti, &thr, i, localVariableEntry[j].slot, &fVal);
-//                            printf("%s=%f\n", localVariableEntry[j].name, fVal);
-//                            break;
-//                        case 'D': // double
-//                            err = (*jvmti)->GetLocalDouble(jvmti, &thr, i, localVariableEntry[j].slot, &dVal);
-//                            printf("%s=%f\n", localVariableEntry[j].name, dVal);
-//                            break;
-//                            // Integer types
-//                        case 'I': // int
-//                        case 'S': // short
-//                        case 'C': // char
-//                        case 'B': // byte
-//                        case 'Z': // boolean
-//                            err = (*jvmti)->GetLocalInt(jvmti, &thr, i, localVariableEntry[j].slot, &iVal);
-//                            printf("%s=%f\n", localVariableEntry[j].name, iVal);
-//                            break;
-//                        default:
-//                            printf("++++++++++++++++居然没有这种类型+++++++++++%s", localVariableEntry[j].signature[0]);
-//                            break;
-//                    }
+                            break;
+                        case 'J': // long
+                            err = (*jvmti)->GetLocalLong(jvmti, &thr, i, localVariableEntry[j].slot, &jVal);
+                            printf("%s=%d\n", localVariableEntry[j].name, jVal);
+                            break;
+                        case 'F': // float
+                            err = (*jvmti)->GetLocalFloat(jvmti, &thr, i, localVariableEntry[j].slot, &fVal);
+                            printf("%s=%f\n", localVariableEntry[j].name, fVal);
+                            break;
+                        case 'D': // double
+                            err = (*jvmti)->GetLocalDouble(jvmti, &thr, i, localVariableEntry[j].slot, &dVal);
+                            printf("%s=%f\n", localVariableEntry[j].name, dVal);
+                            break;
+                            // Integer types
+                        case 'I': // int
+                        case 'S': // short
+                        case 'C': // char
+                        case 'B': // byte
+                        case 'Z': // boolean
+                            printf("int");
+                            err = (*jvmti)->GetLocalInt(jvmti, &thr, i, localVariableEntry[j].slot, &iVal);
+                            printf("%s=%d\n", localVariableEntry[j].name, iVal);
+                            break;
+                        default:
+                            printf("++++++++++++++++居然没有这种类型+++++++++++%s", localVariableEntry[j].signature[0]);
+                            break;
+                    }
                 }
             }
 
@@ -378,7 +380,6 @@ static void JNICALL callbackException(jvmtiEnv *jvmti, JNIEnv* env, jthread thr,
 
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
-    printf("¥˙¿Ìº”‘ÿ");
     static GlobalAgentData data;
     jvmtiError error;
     jint res;
@@ -449,7 +450,6 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     error = (*jvmti)->CreateRawMonitor(jvmti, "agent data", &(gdata->lock));
     check_jvmti_error(&jvmti, error, "Cannot create raw monitor");
 
-    printf("su2");
     return JNI_OK;
 }
 
