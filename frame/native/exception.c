@@ -202,9 +202,9 @@ void get_all_thread(jvmtiEnv const *jvmti, jvmtiError *err, jvmtiError *err1, jv
 }
 
 
-void show_statck_trace(jvmtiEnv const *jvmti, const struct _jobject *thr,jint *count) {
+void show_statck_trace(jvmtiEnv const *jvmti, jthread thr,jint *count) {
     jvmtiFrameInfo frames[10000];
-    jvmtiError err = (*jvmti)->GetStackTrace(jvmti, thr, 0, 10000, frames, count);
+    jvmtiError err = (*jvmti)->GetStackTrace(jvmti, thr, 0, 10000, &frames, count);
     if (err != JVMTI_ERROR_NONE) {
         printf("(GetThreadInfo) Error expected: %d, got: %d\n", JVMTI_ERROR_NONE, err);
         describe(err);
@@ -246,34 +246,31 @@ void show_statck_trace(jvmtiEnv const *jvmti, const struct _jobject *thr,jint *c
                     describe(err);
                     return;
                 }
-                printf("get local value%d\n",local_var_entry_count);
                 jobject result;
                 jlong jVal;
                 jfloat fVal;
                 jdouble dVal;
                 jint iVal;
-                printf("get local value2%d\n",local_var_entry_count);
                 for (int j = 0; j < local_var_entry_count; ++j) {
-                    printf("%d,%s\n",j,localVariableEntry[j].signature);
 
                     switch (localVariableEntry[j].signature[0]) {
 
                         case '[': // Array
                         case 'L': // Object
-//                            err = (*jvmti)->GetLocalObject(jvmti, &thr,
-//                                                           i, localVariableEntry[j].slot,
-//                                                           &result);
+                            err = (*jvmti)->GetLocalObject(jvmti, thr,
+                                                           i, localVariableEntry[j].slot,
+                                                           &result);
                             break;
                         case 'J': // long
-                            err = (*jvmti)->GetLocalLong(jvmti, &thr, i, localVariableEntry[j].slot, &jVal);
+                            err = (*jvmti)->GetLocalLong(jvmti, thr, i, localVariableEntry[j].slot, &jVal);
                             printf("%s=%d\n", localVariableEntry[j].name, jVal);
                             break;
                         case 'F': // float
-                            err = (*jvmti)->GetLocalFloat(jvmti, &thr, i, localVariableEntry[j].slot, &fVal);
+                            err = (*jvmti)->GetLocalFloat(jvmti, thr, i, localVariableEntry[j].slot, &fVal);
                             printf("%s=%f\n", localVariableEntry[j].name, fVal);
                             break;
                         case 'D': // double
-                            err = (*jvmti)->GetLocalDouble(jvmti, &thr, i, localVariableEntry[j].slot, &dVal);
+                            err = (*jvmti)->GetLocalDouble(jvmti, thr, i, localVariableEntry[j].slot, &dVal);
                             printf("%s=%f\n", localVariableEntry[j].name, dVal);
                             break;
                             // Integer types
@@ -282,8 +279,7 @@ void show_statck_trace(jvmtiEnv const *jvmti, const struct _jobject *thr,jint *c
                         case 'C': // char
                         case 'B': // byte
                         case 'Z': // boolean
-                            printf("int");
-                            err = (*jvmti)->GetLocalInt(jvmti, &thr, i, localVariableEntry[j].slot, &iVal);
+                            err = (*jvmti)->GetLocalInt(jvmti, NULL, i, localVariableEntry[j].slot, &iVal);
                             printf("%s=%d\n", localVariableEntry[j].name, iVal);
                             break;
                         default:
